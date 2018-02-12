@@ -127,13 +127,7 @@ function saveOptions() {
 }
 
 function loadOptions() {
-    // @if BROWSER='chrome'
-    chrome.permissions.contains(optionsGlobal.backgroundPermission, function (enabled) {
-        $("#enable-background-mode").prop("checked", enabled);
-    });
-    // @endif
-
-    optionsGlobal.backgroundPage.appGlobal.syncStorage.get(null, function (items) {
+    optionsGlobal.backgroundPage.getOptions().then((items) => {
         var optionsForm = $("#options");
         for (var option in items) {
             var optionControl = optionsForm.find("input[data-option-name='" + option + "']");
@@ -143,16 +137,9 @@ function loadOptions() {
                 optionControl.val(items[option]);
             }
         }
-
-        // @if BROWSER!='firefox'
-        chrome.permissions.contains(optionsGlobal.allSitesPermission, function (enabled) {
-            $("#showBlogIconInNotifications").prop("checked", enabled && items.showBlogIconInNotifications);
-            $("#showThumbnailInNotifications").prop("checked", enabled && items.showThumbnailInNotifications);
-
-            optionsForm.find("input").trigger("change");
-        });
-        // @endif
+        optionsForm.find("input").trigger("change");
     });
+
     $("#header").text(chrome.i18n.getMessage("FeedlyNotifierOptions"));
     $("#options").find("[data-locale-value]").each(function () {
         var textBox = $(this);
@@ -164,7 +151,7 @@ function loadOptions() {
 // @if BROWSER='chrome'
 function setBackgroundMode(enable) {
     if (enable) {
-        chrome.permissions.request(optionsGlobal.backgroundPermission, function () {
+        chrome.permissions.request(optionsGlobal.backgroundPermission, function (granted) {
         });
     } else {
         chrome.permissions.remove(optionsGlobal.backgroundPermission, function () {

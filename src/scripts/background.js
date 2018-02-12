@@ -120,7 +120,13 @@ var appGlobal = {
         return chrome.storage.sync;
         /* eslint-enable no-unreachable */
         // @endif
-    }
+    },
+    backgroundPermission: {
+        permissions: ["background"]
+    },
+    allSitesPermission: {
+        origins: ["<all_urls>"]
+    },
 };
 
 // #Event handlers
@@ -1006,6 +1012,58 @@ function readOptions(callback) {
     });
 }
 
+function getOptions() {
+
+    let options = {};
+
+    return new Promise(function (resolve, reject) {
+        appGlobal.syncStorage.get(null, function (items) {
+            
+            for (var option in items) {
+                options[option] = items[option]
+            }
+    
+            let promises = [];
+    
+            // @if BROWSER=='chrome'
+            let getBackgroundPermissionPromise = new Promise(function (resolve, reject) {
+                try{
+                    chrome.permissions.contains(appGlobal.backgroundPermission, function (enabled) {
+                        console.log('background mode:', enabled);
+                        resolve(enabled);
+                    });
+                }
+                catch(err){
+                    console.log(err);
+                    resolve(false);
+                }
+            });
+            promises.push(getBackgroundPermissionPromise);
+            // @endif
+    
+            // @if BROWSER!='firefox'
+            // let getAllSitesPermissionPromise = new Promise(function (resolve, reject) {
+            //     chrome.permissions.contains(appGlobal.allSitesPermission, function (enabled) {
+            //         console.log('all site permission:', enabled);
+            //         resolve(enabled);
+            //     });
+            // });
+            // promises.push(getAllSitesPermissionPromise);
+            // @endif
+    
+            Promise.all(promises).then((results) => {
+                console.log(results);
+    
+                options["enableBackgroundMode"] = results[0];
+                options["showBlogIconInNotifications"] = results[1] && options.showBlogIconInNotifications;
+                options["showThumbnailInNotifications"] = results[1] && options.showThumbnailInNotifications;
+    
+                resolve(options);
+            })
+        });    
+    });
+}
+
 function apiRequestWrapper(methodName, settings) {
     if (!appGlobal.options.accessToken) {
         setInactiveStatus();
@@ -1043,6 +1101,8 @@ window.Extension = {
     getSavedFeeds: getSavedFeeds,
     markAsRead: markAsRead,
     resetCounter: resetCounter,
+
+    getOptions: getOptions,
 
     getUserInfo: getUserInfo,
     getUserCategories: getUserCategories
