@@ -1,5 +1,3 @@
-"use strict";
-
 import browser from 'webextension-polyfill';
 import FeedlyApiClient from './feedly.api.js';
 
@@ -1008,9 +1006,6 @@ function apiRequestWrapper(methodName, settings) {
 
             return response;
         }, function (response) {
-
-// eslint-disable-next-line no-console
-            console.log(response);
 
             if (response && response.status === 401) {
                 return refreshAccessToken();

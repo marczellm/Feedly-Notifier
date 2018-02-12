@@ -1,13 +1,11 @@
-"use strict";
-
-import * as $ from 'jquery';
+import $ from 'jquery';
 import 'timeago';
 import DOMPurify from 'dompurify';
 import Mustache from 'mustache';
 
 var popupGlobal = {
     //Determines lists of supported jQuery.timeago localizations, default localization is en
-    supportedTimeAgoLocales: ["ru", "fr", "pt-br", "it", "cs", "zh-CN", "zh-TW", "tr", "es", "ko", "de",
+    supportedTimeAgoLocales: ["ru", "ru-RU", "fr", "pt-br", "it", "cs", "zh-CN", "zh-TW", "tr", "es", "ko", "de",
         "uk", "sr", "ja", "ar", "id", "da", "hu", "pt"],
     feeds: [],
     savedFeeds: [],
@@ -22,17 +20,17 @@ $(document).ready(function () {
     $("#open-all-news>span").text(chrome.i18n.getMessage("OpenAllFeeds"));
     $("#open-unsaved-all-news>span").text(chrome.i18n.getMessage("OpenAllSavedFeeds"));
 
-
     if (popupGlobal.backgroundPage.appGlobal.options.abilitySaveFeeds) {
         $("#popup-content").addClass("tabs");
     }
 
     setPopupExpand(false);
 
+    var language = window.navigator.language;
     //If we support this localization of timeago, then insert script with it
-    if (popupGlobal.supportedTimeAgoLocales.indexOf(window.navigator.language) !== -1) {
+    if (popupGlobal.supportedTimeAgoLocales.indexOf(language) !== -1) { 
         //Trying load localization for jQuery.timeago
-        $.getScript("/scripts/timeago/locales/jquery.timeago." + window.navigator.language + ".js", function () {
+        $.getScript("/scripts/timeago/locales/jquery.timeago." + language + ".js", function () {
             executeAsync(renderFeeds);
         });
     } else {

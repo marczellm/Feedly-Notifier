@@ -1,6 +1,4 @@
-"use strict";
-
-let FeedlyApiClient = function(accessToken) {
+export default function (accessToken) {
 
     this.accessToken = accessToken;
 
@@ -78,6 +76,4 @@ let FeedlyApiClient = function(accessToken) {
             .then(status)
             .then(json);
     };
-};
-
-export default FeedlyApiClient;
+};;

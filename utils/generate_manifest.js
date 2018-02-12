@@ -1,7 +1,6 @@
 var fileSystem = require("fs"),
     path = require("path"),
-    preprocess = require('preprocess'),
-    env = require("./env");
+    preprocess = require('preprocess');
 
 var manifest = fileSystem.readFileSync("src/manifest.json").toString();
 var manifestPath = path.join(__dirname, "../build/manifest.json");

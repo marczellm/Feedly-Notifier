@@ -1,26 +1,12 @@
-var webpack = require("webpack"),
-    path = require("path"),
-    fileSystem = require("fs"),
+var path = require('path'),
     argv = require('yargs').argv,
-    env = require("./utils/env"),
-    HtmlWebpackPlugin = require("html-webpack-plugin"),
-    WriteFilePlugin = require("write-file-webpack-plugin"),
+    env = require('./utils/env'),
+    webpack = require('webpack'),
+    HtmlWebpackPlugin = require('html-webpack-plugin'),
     CopyWebpackPlugin = require('copy-webpack-plugin'),
     StringReplacePlugin = require("string-replace-webpack-plugin"),
-    ZipWebpackPlugin = require('zip-webpack-plugin');
-
-// load the secrets
-var alias = {};
-
-var secretsPath = path.join(__dirname, ("secrets." + env.NODE_ENV + ".js"));
-
-var fileExtensions = ["jpg", "jpeg", "png", "gif", "eot", "otf", "svg", "ttf", "woff", "woff2"];
-
+    WriteFilePlugin = require("write-file-webpack-plugin");
 var sandboxUrl = "http://sandbox7.feedly.com";
-
-if (fileSystem.existsSync(secretsPath)) {
-    alias["secrets"] = secretsPath;
-}
 
 var plugins = [
     new StringReplacePlugin(),
@@ -36,38 +22,38 @@ var plugins = [
         chunks: ["popup"]
     }),
     new HtmlWebpackPlugin({
-        template: path.join(__dirname, "src", "options.html"),
-        filename: "options.html",
-        chunks: ["options"]
-    }),
-    new HtmlWebpackPlugin({
         template: path.join(__dirname, "src", "background.html"),
         filename: "background.html",
         chunks: ["background"]
+    }),
+    new HtmlWebpackPlugin({
+        template: path.join(__dirname, "src", "options.html"),
+        filename: "options.html",
+        chunks: ["options"]
     }),
     new CopyWebpackPlugin([
         {
             from: path.resolve(__dirname, "src"),
             to: path.resolve(__dirname, "build"),
             ignore: ['**/scripts/**/*', "*.html", "manifest.json"],
-
+            verbose: true
+        }
+    ]),
+    new CopyWebpackPlugin([
+        {
+            from: path.resolve(__dirname, "node_modules/timeago/locales"),
+            to: path.resolve(__dirname, "build/scripts/timeago/locales"),
             verbose: true
         }
     ]),
     new WriteFilePlugin()
-].concat(env.NODE_ENV === 'production' ? [new ZipWebpackPlugin({
-    path: path.resolve(__dirname, 'build'),
-    filename: "feedly-notifier.zip",
-    fileOptions: {
-        compress: true
-    }
-})] : []);
+];
 
-var options = {
+var config = {
     entry: {
+        background: path.join(__dirname, "src", "scripts", "background.js"),
         popup: path.join(__dirname, "src", "scripts", "popup.js"),
-        options: path.join(__dirname, "src", "scripts", "options.js"),
-        background: path.join(__dirname, "src", "scripts", "background.js")
+        options: path.join(__dirname, "src", "scripts", "options.js")
     },
     output: {
         path: path.join(__dirname, "build"),
@@ -107,41 +93,24 @@ var options = {
                 test: /.js$/,
                 exclude: /node_modules/,
                 use: [
-                    // {
-                    //     loader: "echo-loader",
-                    // },
+                    {
+                        loader: "echo-loader",
+                    },
                     {
                         loader: 'preprocess-loader',
                         options: {
                             BROWSER: argv.browser
                         }
-                    },
-                    {
-                        loader: "eslint-loader",
-                        options: {
-                            failOnError: true,
-                            failOnWarning: true
-                        }
                     }
                 ]
-            },
-            {
-                test: /\.css$/,
-                loader: "style-loader!css-loader",
-                exclude: /node_modules/
-            },
-            {
-                test: new RegExp('\.(' + fileExtensions.join('|') + ')$'),
-                loader: "file-loader?name=[name].[ext]",
-                exclude: /node_modules/
             },
             {
                 test: /\.html$/,
                 exclude: /node_modules/,
                 use: [
-                    // {
-                    //     loader: "echo-loader",
-                    // },
+                    {
+                        loader: "echo-loader",
+                    },
                     {
                         loader: 'preprocess-loader',
                         options: {
@@ -152,17 +121,10 @@ var options = {
                         loader: "html-loader",
                     }
                 ]
-            }
+            }    
         ]
     },
-    resolve: {
-        alias: alias
-    },
     plugins: plugins
-};
+}
 
-// if (env.NODE_ENV === "development") {
-//   options.devtool = "cheap-module-eval-source-map";
-// }
-
-module.exports = options;
+module.exports = config;
