@@ -1,14 +1,6 @@
 import $ from 'jquery';
 
-import * as $ from 'jquery';
-
 var optionsGlobal = {
-    backgroundPermission: {
-        permissions: ["background"]
-    },
-    allSitesPermission: {
-        origins: ["<all_urls>"]
-    },
     backgroundPage: chrome.extension.getBackgroundPage().Extension
 };
 
@@ -97,35 +89,6 @@ function parseFilters() {
     return filters;
 }
 
-/* Save all option in the chrome storage */
-function saveOptions() {
-    var options = {};
-    $("#options").find("input[data-option-name]").each(function (optionName, value) {
-        var optionControl = $(value);
-        var optionValue;
-        if (optionControl.attr("type") === "checkbox") {
-            optionValue = optionControl.is(":checked");
-        } else if (optionControl.attr("type") === "number") {
-            optionValue = Number(optionControl.val());
-        } else {
-            optionValue = optionControl.val();
-        }
-        options[optionControl.data("option-name")] = optionValue;
-    });
-    options.filters = parseFilters();
-
-    // @if BROWSER='chrome'
-    setBackgroundMode($("#enable-background-mode").is(":checked"));
-    // @endif
-
-    setAllSitesPermission($("#showBlogIconInNotifications").is(":checked")
-        || $("#showThumbnailInNotifications").is(":checked"), options, function () {
-            optionsGlobal.backgroundPage.appGlobal.syncStorage.set(options, function () {
-                alert(chrome.i18n.getMessage("OptionsSaved"));
-            });
-        });
-}
-
 function loadOptions() {
     optionsGlobal.backgroundPage.getOptions().then((items) => {
         var optionsForm = $("#options");
@@ -148,34 +111,29 @@ function loadOptions() {
     });
 }
 
-// @if BROWSER='chrome'
-function setBackgroundMode(enable) {
-    if (enable) {
-        chrome.permissions.request(optionsGlobal.backgroundPermission, function (granted) {
-        });
-    } else {
-        chrome.permissions.remove(optionsGlobal.backgroundPermission, function () {
-        });
-    }
-}
-// @endif
+function saveOptions() {
 
-function setAllSitesPermission(enable, options, callback) {
-    if (enable) {
-        chrome.permissions.request(optionsGlobal.allSitesPermission, function (granted) {
-            if ($("#showThumbnailInNotifications").is(":checked")) {
-                $("#showThumbnailInNotifications").prop('checked', granted);
-                options.showThumbnailInNotifications = granted;
-            }
+    var options = {};
 
-            if ($("#showBlogIconInNotifications").is(":checked")) {
-                $("#showBlogIconInNotifications").prop('checked', granted);
-                options.showBlogIconInNotifications = granted;
-            }
+    $("#options").find("input[data-option-name]").each(function (optionName, value) {
+        var optionControl = $(value);
+        var optionValue;
+        if (optionControl.attr("type") === "checkbox") {
+            optionValue = optionControl.is(":checked");
+        } else if (optionControl.attr("type") === "number") {
+            optionValue = Number(optionControl.val());
+        } else {
+            optionValue = optionControl.val();
+        }
+        options[optionControl.data("option-name")] = optionValue;
+    });
 
-            callback();
-        });
-    } else {
-        callback();
-    }
+    options.filters = parseFilters();
+    options.enableBackgroundMode = $("#enable-background-mode").is(":checked");
+    options.showBlogIconInNotifications = $("#showBlogIconInNotifications").is(":checked");
+    options.showThumbnailInNotifications = $("#showThumbnailInNotifications").is(":checked");
+
+    optionsGlobal.backgroundPage.saveOptions(options).then(() => {
+        alert(chrome.i18n.getMessage("OptionsSaved"));
+    });
 }

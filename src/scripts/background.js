@@ -943,7 +943,13 @@ function getUserInfo() {
  * @returns {Promise}
  */
 function getUserCategories() {
-    return apiRequestWrapper("categories");
+    return apiRequestWrapper("categories")
+        .then(function(result) {
+            return result;
+        })
+        .catch(function(err) {
+            return [];
+        });
 }
 
 /**
@@ -1029,12 +1035,10 @@ function getOptions() {
             let getBackgroundPermissionPromise = new Promise(function (resolve, reject) {
                 try{
                     chrome.permissions.contains(appGlobal.backgroundPermission, function (enabled) {
-                        console.log('background mode:', enabled);
                         resolve(enabled);
                     });
                 }
                 catch(err){
-                    console.log(err);
                     resolve(false);
                 }
             });
@@ -1042,18 +1046,15 @@ function getOptions() {
             // @endif
     
             // @if BROWSER!='firefox'
-            // let getAllSitesPermissionPromise = new Promise(function (resolve, reject) {
-            //     chrome.permissions.contains(appGlobal.allSitesPermission, function (enabled) {
-            //         console.log('all site permission:', enabled);
-            //         resolve(enabled);
-            //     });
-            // });
-            // promises.push(getAllSitesPermissionPromise);
+            let getAllSitesPermissionPromise = new Promise(function (resolve, reject) {
+                chrome.permissions.contains(appGlobal.allSitesPermission, function (enabled) {
+                    resolve(enabled);
+                });
+            });
+            promises.push(getAllSitesPermissionPromise);
             // @endif
     
-            Promise.all(promises).then((results) => {
-                console.log(results);
-    
+            Promise.all(promises).then((results) => {    
                 options["enableBackgroundMode"] = results[0];
                 options["showBlogIconInNotifications"] = results[1] && options.showBlogIconInNotifications;
                 options["showThumbnailInNotifications"] = results[1] && options.showThumbnailInNotifications;
@@ -1062,6 +1063,47 @@ function getOptions() {
             })
         });    
     });
+}
+
+function saveOptions(options) {
+
+    return new Promise(function (resolve, reject) {
+        appGlobal.syncStorage.set(options, function () {
+            
+            let promises = [];
+            // @if BROWSER=='chrome'
+            // request/remove background permission
+            let setBackgroundPermissionPromise = new Promise(function (resolve, reject) {
+                if (options["enableBackgroundMode"]) {
+                    chrome.permissions.request(appGlobal.backgroundPermission, function () {
+                        resolve();
+                    });
+                } else {
+                    chrome.permissions.remove(appGlobal.backgroundPermission, function () {
+                        resolve();
+                    });
+                }
+            });
+            promises.push(setBackgroundPermissionPromise);
+            // @endif
+            // request all urls permission
+            let setAllSitesPermissionPromise = new Promise(function (resolve, reject) {
+                let isAllSitesPermissionRequired = options["showBlogIconInNotifications"] || options["showThumbnailInNotifications"];
+
+                if (isAllSitesPermissionRequired) {
+                    chrome.permissions.request(appGlobal.allSitesPermission, function (granted) {
+                        resolve();
+                    })
+                } else {
+                    resolve();
+                }
+            });
+            promises.push(setAllSitesPermissionPromise);
+
+            Promise.all(promises).then(() => { resolve(); })
+        });
+    });
+
 }
 
 function apiRequestWrapper(methodName, settings) {
@@ -1103,6 +1145,7 @@ window.Extension = {
     resetCounter: resetCounter,
 
     getOptions: getOptions,
+    saveOptions: saveOptions,
 
     getUserInfo: getUserInfo,
     getUserCategories: getUserCategories
