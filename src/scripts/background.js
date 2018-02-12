@@ -520,6 +520,8 @@ function makeMarkersRequest(parameters){
         }
     }).then(setBadgeCounter)
     .catch(function () {
+        chrome.browserAction.setBadgeText({ text: ""});
+
         /* eslint-disable no-console */
         console.info("Unable to load counters.");
         /* eslint-enable no-console */
@@ -596,7 +598,7 @@ function updateFeeds(silentUpdate) {
             }
         })
         .catch(function () {
-            return Promise.resolve();
+            console.info("Unable to update feeds.");
         });
 }
 
@@ -716,7 +718,12 @@ function parseFeeds(feedlyResponse) {
                     isSaved: isSaved,
                     categories: categories,
                     author: item.author,
-                    thumbnail: item.thumbnail && item.thumbnail.length > 0 && item.thumbnail[0].url ? item.thumbnail[0].url : null
+                    thumbnail: item.thumbnail && item.thumbnail.length > 0 && item.thumbnail[0].url ? item.thumbnail[0].url : null,
+                    showEngagement: item.engagement > 0,
+                    engagement: item.engagement > 1000 ? Math.trunc(item.engagement / 1000) : item.engagement,
+                    engagementPostfix: item.engagement > 1000 ? "K" : "",
+                    isEngagementHot: item.engagement >= 5000 && item.engagement < 100000,
+                    isEngagementOnFire: item.engagement >= 100000
                 };
             });
         });
@@ -938,6 +945,8 @@ function getUserCategories() {
  */
 function refreshAccessToken(){
     if(!appGlobal.options.refreshToken) {
+        setInactiveStatus();
+
         return Promise.reject();
     }
 
@@ -955,6 +964,13 @@ function refreshAccessToken(){
             accessToken: response.access_token,
             feedlyUserId: response.id
         });
+    }, function (response) {
+        // If the refresh token is invalid
+        if (response && response.status === 403) {
+            setInactiveStatus();
+        }
+
+        return Promise.reject();
     });
 }
 
@@ -1006,15 +1022,8 @@ function apiRequestWrapper(methodName, settings) {
 
             return response;
         }, function (response) {
-
             if (response && response.status === 401) {
                 return refreshAccessToken();
-            }
-
-            return Promise.reject();
-        }).catch(function () {
-            if (appGlobal.isLoggedIn) {
-                setInactiveStatus();
             }
 
             return Promise.reject();

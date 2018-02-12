@@ -39,13 +39,13 @@ var plugins = [
             verbose: true
         }
     ]),
-    new CopyWebpackPlugin([
-        {
-            from: path.resolve(__dirname, "node_modules/timeago/locales"),
-            to: path.resolve(__dirname, "build/scripts/timeago/locales"),
-            verbose: true
-        }
-    ]),
+    // new CopyWebpackPlugin([
+    //     {
+    //         from: path.resolve(__dirname, "node_modules/timeago/locales"),
+    //         to: path.resolve(__dirname, "build/scripts/timeago/locales"),
+    //         verbose: true
+    //     }
+    // ]),
     new WriteFilePlugin()
 ];
 

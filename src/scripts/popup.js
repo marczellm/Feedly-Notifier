@@ -1,12 +1,10 @@
 import $ from 'jquery';
-import 'timeago';
+import timeago from 'timeago.js';
+import 'timeago.js/locales/locales.js';
 import DOMPurify from 'dompurify';
 import Mustache from 'mustache';
 
 var popupGlobal = {
-    //Determines lists of supported jQuery.timeago localizations, default localization is en
-    supportedTimeAgoLocales: ["ru", "ru-RU", "fr", "pt-br", "it", "cs", "zh-CN", "zh-TW", "tr", "es", "ko", "de",
-        "uk", "sr", "ja", "ar", "id", "da", "hu", "pt"],
     feeds: [],
     savedFeeds: [],
     backgroundPage: chrome.extension.getBackgroundPage().Extension
@@ -26,16 +24,7 @@ $(document).ready(function () {
 
     setPopupExpand(false);
 
-    var language = window.navigator.language;
-    //If we support this localization of timeago, then insert script with it
-    if (popupGlobal.supportedTimeAgoLocales.indexOf(language) !== -1) { 
-        //Trying load localization for jQuery.timeago
-        $.getScript("/scripts/timeago/locales/jquery.timeago." + language + ".js", function () {
-            executeAsync(renderFeeds);
-        });
-    } else {
-        executeAsync(renderFeeds);
-    }
+    executeAsync(renderFeeds);
 });
 
 $("#login").click(function () {
@@ -125,6 +114,7 @@ $("#popup-content").on("click", ".show-content", function () {
 
                 // @if BROWSER='firefox'
                 // We should sanitize the content of feeds because of AMO review.
+                feed.title = DOMPurify.sanitize(feed.title);
                 feed.content = DOMPurify.sanitize(feed.content);
                 // @endif
 
@@ -140,7 +130,8 @@ $("#popup-content").on("click", ".show-content", function () {
         }
     }
     contentContainer.slideToggle("fast", function () {
-        $this.css("background-position", contentContainer.is(":visible") ? "-288px -120px" : "-313px -119px");
+        $this.toggleClass("glyphicon-chevron-down");
+        $this.toggleClass("glyphicon-chevron-up");
         if ($(".content").is(":visible")) {
             setPopupExpand(true);
         } else {
@@ -230,7 +221,7 @@ function renderFeeds(forceUpdate) {
                 Mustache.parse(feedsTemplate);
 
                 container.append(Mustache.render(feedsTemplate, {feeds: feeds}));
-                container.find(".timeago").timeago();
+                renderTimeAgo(container);
 
                 showFeeds();
 
@@ -262,7 +253,7 @@ function renderSavedFeeds(forceUpdate) {
                 Mustache.parse(feedTemplate);
 
                 container.append(Mustache.render(feedTemplate, {feeds: feeds}));
-                container.find(".timeago").timeago();
+                renderTimeAgo(container);
 
                 showSavedFeeds();
 
@@ -331,6 +322,12 @@ function renderCategories(container, feeds){
     var template = $("#categories-template").html();
     Mustache.parse(template);
     container.append(Mustache.render(template, {categories: categories}));
+}
+
+function renderTimeAgo(container) {
+    let timeagoInstance = timeago();
+    let timeagoNodes = document.querySelectorAll(".timeago");
+    timeagoInstance.render(timeagoNodes, window.navigator.language);
 }
 
 function getUniqueCategories(feeds){

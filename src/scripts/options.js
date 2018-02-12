@@ -1,4 +1,4 @@
-"use strict";
+import $ from 'jquery';
 
 import * as $ from 'jquery';
 
@@ -63,7 +63,7 @@ function loadProfileData() {
     });
 }
 
-function loadUserCategories() {
+function loadUserCategories(){
     optionsGlobal.backgroundPage.getUserCategories()
         .then(function (result) {
             result.forEach(function (element) {

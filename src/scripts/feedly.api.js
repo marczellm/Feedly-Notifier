@@ -47,7 +47,9 @@ export default function (accessToken) {
         }
 
         function json(response) {
-            return response.json();
+            return response.json().catch(function () {
+                return {};
+            });
         }
 
         let url = this.getMethodUrl(methodName, settings.parameters, settings.useSecureConnection);
