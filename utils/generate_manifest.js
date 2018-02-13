@@ -1,15 +1,15 @@
-var fileSystem = require("fs"),
-    path = require("path"),
-    preprocess = require('preprocess');
+const fileSystem = require('fs');
+const path = require('path');
+const preprocess = require('preprocess');
 
-var manifest = fileSystem.readFileSync("src/manifest.json").toString();
-var manifestPath = path.join(__dirname, "../build/manifest.json");
+const manifest = fileSystem.readFileSync('src/manifest.json').toString();
+const manifestPath = path.join(__dirname, '../build/manifest.json');
 
-var processed = preprocess.preprocess(manifest, null, { type: "js" });
+const processed = preprocess.preprocess(manifest, null, { type: 'js' });
 
-var json = JSON.parse(processed);
+const json = JSON.parse(processed);
 
 fileSystem.writeFileSync(
   manifestPath,
-  JSON.stringify(json, null, 4)
+  JSON.stringify(json, null, 4),
 );

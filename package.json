@@ -1,5 +1,6 @@
 {
   "name": "feedly-notifier",
+  "version": "2.17.2",
   "description": "Feedly notifier is a tiny extension that keeps you up to date with your feedly subscriptions.",
   "author": "Dmitriy Samodov, Oleg Shevchenko",
   "license": "MIT",
@@ -19,8 +20,14 @@
     "dev:opera": "npm run sandbox -- --browser=opera"
   },
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
     "copy-webpack-plugin": "^4.4.1",
     "echo-loader": "^0.0.1",
+    "eslint": "^4.17.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0",
     "fs-extra": "^5.0.0",
     "html-loader": "^0.5.5",
     "html-webpack-plugin": "^2.30.1",
@@ -38,6 +45,7 @@
     "jquery": "^3.3.1",
     "mustache": "^2.3.0",
     "timeago.js": "^3.0.2",
+    "typescript": "^2.7.1",
     "webextension-polyfill": "^0.2.1"
   }
 }

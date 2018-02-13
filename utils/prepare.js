@@ -1,9 +1,9 @@
-var fileSystem = require("fs-extra"),
-    path = require("path"),
-    argv = require('yargs').argv;
+const fileSystem = require('fs-extra');
+const path = require('path');
+const { argv } = require('yargs');
 
-process.env.BROWSER = argv.browser || 'chrome'; 
+process.env.BROWSER = argv.browser || 'chrome';
 
-fileSystem.emptyDirSync(path.join(__dirname, "../build"));
+fileSystem.emptyDirSync(path.join(__dirname, '../build'));
 
-require("./generate_manifest");
+require('./generate_manifest');

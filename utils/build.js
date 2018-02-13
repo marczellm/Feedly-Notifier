@@ -1,22 +1,21 @@
-var webpack = require("webpack"),
-    path = require('path'),
-    del = require('del'),
-    zipdir = require('zip-dir'),
-    config = require("../webpack.config");
+const webpack = require('webpack');
+const path = require('path');
+const zipdir = require('zip-dir');
+const config = require('../webpack.config');
 
-require("./prepare");
+require('./prepare');
+
+const createZipFile = () => {
+  const distPath = path.join(__dirname, '../build');
+  zipdir(distPath, { saveTo: `${distPath}/feedly-notifier.zip` }, (err) => {
+    if (err) throw err;
+  });
+};
 
 webpack(
   config,
-    function (err) { 
-        if (err) { throw err; }
-        createZipFile();
-    }
+  (err) => {
+    if (err) { throw err; }
+    createZipFile();
+  },
 );
-
-function createZipFile() {
-    let distPath = path.join(__dirname, "../build");
-    zipdir(distPath, { saveTo: distPath + '/feedly-notifier.zip' }, function (err, buffer) {
-        if (err) throw err;
-    })
-}
