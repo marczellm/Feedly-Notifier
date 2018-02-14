@@ -11,9 +11,9 @@ const sandboxUrl = 'http://sandbox7.feedly.com';
 
 module.exports = {
   entry: {
-    background: path.join(__dirname, 'src', 'scripts', 'background.js'),
-    popup: path.join(__dirname, 'src', 'scripts', 'popup.js'),
-    options: path.join(__dirname, 'src', 'scripts', 'options.js'),
+    background: path.join(__dirname, 'src', 'scripts', 'background.ts'),
+    popup: path.join(__dirname, 'src', 'scripts', 'popup.ts'),
+    options: path.join(__dirname, 'src', 'scripts', 'options.ts'),
   },
   output: {
     path: path.join(__dirname, 'build'),
@@ -22,7 +22,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /feedly\.api\.js/,
+        test: /feedly\.api\.ts/,
         exclude: /node_modules/,
         loader: StringReplacePlugin.replace({
           replacements: [
@@ -34,29 +34,33 @@ module.exports = {
         }),
       },
       {
-        test: /background\.js/,
-        exclude: /node_modules/,
-        loader: StringReplacePlugin.replace({
-          replacements: [
-            {
-              pattern: /http(?:s)?:\/\/(?:www\.)?feedly\.com/gi,
-              replacement: match => (argv.sandbox ? sandboxUrl : match),
-            },
-          ],
-        }),
-      },
-      {
-        test: /.js$/,
+        test: /background\.ts/,
         exclude: /node_modules/,
         use: [
           {
             loader: 'echo-loader',
           },
           {
-            loader: 'babel-loader',
-            options: {
-              presets: ['env'],
-            },
+            loader: StringReplacePlugin.replace({
+              replacements: [
+                {
+                  pattern: /http(?:s)?:\/\/(?:www\.)?feedly\.com/gi,
+                  replacement: match => (argv.sandbox ? sandboxUrl : match),
+                },
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        test: /.ts$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'echo-loader',
+          },
+          {
+            loader: 'ts-loader',
           },
           {
             loader: 'preprocess-loader',

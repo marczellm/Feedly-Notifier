@@ -20,6 +20,11 @@
     "dev:opera": "npm run sandbox -- --browser=opera"
   },
   "devDependencies": {
+    "@types/chrome": "^0.0.59",
+    "@types/dompurify": "^0.0.31",
+    "@types/firefox-webext-browser": "^58.0.1",
+    "@types/jquery": "^3.3.0",
+    "@types/mustache": "^0.8.30",
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
@@ -34,6 +39,8 @@
     "preprocess": "^3.1.0",
     "preprocess-loader": "^0.2.2",
     "string-replace-webpack-plugin": "^0.1.3",
+    "ts-loader": "^3.5.0",
+    "tslint": "^5.9.1",
     "webpack": "^3.11.0",
     "webpack-dev-server": "^2.11.1",
     "write-file-webpack-plugin": "^4.2.0",
