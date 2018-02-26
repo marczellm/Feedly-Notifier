@@ -1,144 +1,22 @@
 import * as browser from "webextension-polyfill";
-import FeedlyApiClient from "./feedly.ts";
+import FeedlyApiClient from "./feedly.api";
+import {
+  IFeedlyAuthToken,
+  IFeedlyCategory,
+  IFeedlyMarkerCounts,
+  IFeedlyStream,
+  IFeedlySubscription,
+  IFeedlyTag,
+  IFeedlyUnreadCount,
+  IFeedlyUserInfo,
+} from "./feedly.api.models";
 
-enum Browser {
-  Chrome = "chrome",
-  Firefox = "firefox",
-  Opera = "opera",
-}
-
-export interface IFeedlyAuthToken {
-  id: string;
-  refresh_token?: string;
-  access_token?: string;
-  expires_in: number;
-  token_type?: string;
-  plan?: string;
-  state?: string;
-}
-
-export interface IFeedlyUserInfo {
-  [key: string]: string | undefined;
-  id: string;
-  email: string;
-  givenName?: string;
-  familyName?: string;
-}
-
-export interface IFeedlyStream {
-  id: string;
-  title: string;
-  direction: string;
-  continuation: string;
-  items: IFeedlyEntry[];
-}
-
-export interface IFeedlyEntry {
-  id: string;
-  title?: string;
-  content?: IFeedlyEntryContent;
-  summary?: IFeedlyEntryContent;
-  keywords?: string[];
-  originId: string;
-  fingerprint: string;
-  crawled: number;
-  unread: false;
-  author?: string;
-  categories: IFeedlyCategory[];
-  origin?: IFeedlyEntryOrigin;
-  engagement?: number;
-  thumbnail: IFeedlyImage[];
-  tags?: IFeedlyTag[];
-  alternate?: IFeedlyLinkObject[];
-}
-
-export interface IFeedlyLinkObject {
-  href: string;
-  type?: string;
-}
-
-export interface IFeedlyImage {
-  url: string;
-}
-
-export interface IFeedlyEntryOrigin {
-  streamId: string;
-  title: string;
-  htmlUrl: string;
-}
-
-export interface IFeedlyEntryContent {
-  direction: string;
-  content: string;
-}
-
-export interface IFeedlyTag {
-  id: string;
-  label?: string;
-}
-
-export interface IFeedlyCategory {
-  id: string;
-  label: string;
-}
-
-export interface IFeedlyNotifierCategory {
-  id: string;
-  encodedId: string;
-  label: string;
-}
-
-export interface IFeedlySubscription {
-  id: string;
-  title: string;
-  categories: IFeedlyCategory[];
-
-}
-
-export interface IFeedlyUnreadCount {
-  id: string;
-  count: number;
-}
-
-export interface IFeedlyMarkerCounts {
-  unreadcounts: IFeedlyUnreadCount[];
-  updated: any;
-}
-
-export interface IFeedlyCategoryFilter {
-  id: string;
-  label: string;
-  checked: boolean;
-}
-
-export interface IFeedlyFeedEntry {
-  id: string;
-  date?: Date;
-}
-
-export interface IFeedlyNotifierFeedEntry {
-  id: string;
-  title: string;
-  titleDirection?: string;
-  content: string;
-  contentDirection?: string;
-  date: Date;
-  isoDate: string;
-  url: string;
-  author?: string;
-  blog?: string;
-  blogUrl?: string;
-  blogIcon?: string;
-  blogTitleDirection?: string;
-  thumbnail?: string;
-  categories: IFeedlyCategory[];
-  isSaved: boolean;
-  showEngagement: boolean;
-  engagement?: number;
-  engagementPostfix: string;
-  isEngagementHot: boolean;
-  isEngagementOnFire: boolean;
-}
+import {
+  Browser,
+  IFeedlyNotifierCategory,
+  IFeedlyNotifierFeedEntry,
+  IFeedlyNotifierUserCategoryFilter,
+} from "./models";
 
 export interface IFeedlyNotifierOptions {
   [key: string]: any;
@@ -184,7 +62,7 @@ export interface IFeedlyNotifierBackgroundPage {
   saveOptions(options: IFeedlyNotifierOptions): Promise<void>;
 
   getUserInfo(): Promise<IFeedlyUserInfo>;
-  getUserCategoryFilters(): Promise<IFeedlyCategoryFilter[]>;
+  getUserCategoryFilters(): Promise<IFeedlyNotifierUserCategoryFilter[]>;
 
   getFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
   getSavedFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
@@ -204,7 +82,6 @@ declare let CLIENT_SECRET: string;
 const appGlobal = {
   feedlyApiClient: new FeedlyApiClient(),
   browser: BROWSER,
-  // feedTab: null,
   feedTabId: undefined,
   icons: {
     default: {
@@ -306,7 +183,7 @@ const appGlobal = {
   intervalIds: [] as number[],
   clientId: CLIENT_ID,
   clientSecret: CLIENT_SECRET,
-  getUserSubscriptionsPromise: undefined as Promise<any> | undefined,
+  getUserSubscriptionsPromise: undefined as Promise<IFeedlySubscription[]> | undefined,
   get feedlyUrl() {
     return this.options.useSecureConnection ? "https://feedly.com" : "http://feedly.com";
   },
@@ -320,20 +197,11 @@ const appGlobal = {
     return `user/${this.options.feedlyUserId}/category/global.uncategorized`;
   },
   get syncStorage() {
-    // @xxxxxxxxxxxxxif BROWSER=="firefox"
-    // Firefox doesn"t support sync storage
-    // return chrome.storage.local;
-    // @exxndif
-
-    // @xxxxxxxxxxif BROWSER!="firefox"
-    /* tslint:disable no-unreachable */
-    // return chrome.storage.sync;
-    /* tslint:enable no-unreachable */
-    // @exxxxndif
-    const storage = this.browser === Browser.Chrome
-        ? chrome.storage.sync
-        : chrome.storage.local;
-    return storage;
+    if (this.browser !== Browser.Chrome) {
+      return browser.storage.local;
+    } else {
+      return browser.storage.sync;
+    }
   },
   backgroundPermission: {
     permissions: ["background"],
@@ -347,25 +215,33 @@ const appGlobal = {
 
 // @if BROWSER!="firefox"
 chrome.runtime.onInstalled.addListener(() => {
-  readOptions(() => {
+  console.log("chrome.runtime.onInstalled");
+
+  readOptions()
     // Write all options in chrome storage and initialize application
-    writeOptions(initialize);
-  });
+    .then(() => writeOptions())
+    .then(() => initialize());
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  readOptions(initialize);
+  console.log("chrome.runtime.onStartup");
+
+  readOptions()
+    .then(() => initialize());
 });
 // @endif
 
 // @if BROWSER=="firefox"
-readOptions(() => {
+readOptions()
   // Write all options in chrome storage and initialize application
-  writeOptions(initialize);
-});
+  .then(() => writeOptions())
+  .then(() => initialize());
+
 // @endif
 
 chrome.storage.onChanged.addListener((changes) => {
+  console.log("browser.storage.onChanged()");
+
   let callback!: () => void;
 
   for (const optionName in changes) {
@@ -375,10 +251,14 @@ chrome.storage.onChanged.addListener((changes) => {
     }
   }
 
-  readOptions(callback);
+  if (callback) {
+    readOptions().then(() => callback());
+  }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  console.log("chrome.tabs.onRemoved", tabId);
+
   if (appGlobal.feedTabId && appGlobal.feedTabId === tabId) {
     appGlobal.feedTabId = undefined;
   }
@@ -439,81 +319,81 @@ chrome.notifications.onButtonClicked.addListener((notificationId, button) => {
   appGlobal.notifications[notificationId] = undefined;
 });
 
-// /* Sends desktop notifications */
-// function sendDesktopNotification(feeds: IFeedlyNotifierFeedEntry[]) {
-//   function createNotifications(feedsToNotifications: IFeedlyNotifierFeedEntry[], showBlogIcons: boolean, showThumbnails: boolean) {
-//     for (const feed of feedsToNotifications) {
-//       let notificationType = "basic";
-//       // @if BROWSER=="chrome"
-//       if (showThumbnails && feed.thumbnail) {
-//         notificationType = "image";
-//       }
-//       // @endif
+/* Sends desktop notifications */
+function sendDesktopNotification(feeds: IFeedlyNotifierFeedEntry[]) {
+  function createNotifications(feedsToNotifications: IFeedlyNotifierFeedEntry[], showBlogIcons: boolean, showThumbnails: boolean) {
+    for (const feed of feedsToNotifications) {
+      let notificationType = "basic";
+      // @if BROWSER=="chrome"
+      if (showThumbnails && feed.thumbnail) {
+        notificationType = "image";
+      }
+      // @endif
 
-//       chrome.notifications.create(feed.id, {
-//         type: notificationType,
-//         title: feed.blog,
-//         message: feed.title,
-//         iconUrl: showBlogIcons ? feed.blogIcon : appGlobal.icons.defaultBig,
-//         // @if BROWSER=="chrome"
-//         imageUrl: showThumbnails ? feed.thumbnail : null,
-//         buttons: [
-//           {
-//             title: "1", // chrome.i18n.getMessage("MarkAsRead"),
-//           },
-//         ],
-//         // @endif
-//       } as chrome.notifications.NotificationOptions);
+      chrome.notifications.create(feed.id, {
+        type: notificationType,
+        title: feed.blog,
+        message: feed.title,
+        iconUrl: showBlogIcons ? feed.blogIcon : appGlobal.icons.defaultBig,
+        // @if BROWSER=="chrome"
+        imageUrl: showThumbnails ? feed.thumbnail : null,
+        buttons: [
+          {
+            title: chrome.i18n.getMessage("MarkAsRead"),
+          },
+        ],
+        // @endif
+      } as chrome.notifications.NotificationOptions);
 
-//       appGlobal.notifications[feed.id] = feed.url;
-//     }
-//   }
+      appGlobal.notifications[feed.id] = feed.url;
+    }
+  }
 
-//   // if notifications too many, then to show only count
-//   let maxNotifications = appGlobal.options.maxNotificationsCount;
-//   // @if BROWSER=="firefox"
-//   // https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/notifications/create
-//   // If you call notifications.create() more than once in rapid succession,
-//   // Firefox may end up not displaying any notification at all.
-//   maxNotifications = 1;
-//   // @endif
-//   if (feeds.length > maxNotifications) {
-//     // We can detect only limit count of new feeds at time, but actually count of feeds may be more
-//     const count = feeds.length === appGlobal.options.maxNumberOfFeeds ? chrome.i18n.getMessage("many") : feeds.length.toString();
+  // if notifications too many, then to show only count
+  let maxNotifications = appGlobal.options.maxNotificationsCount!;
+  // @if BROWSER=="firefox"
+  // https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/notifications/create
+  // If you call notifications.create() more than once in rapid succession,
+  // Firefox may end up not displaying any notification at all.
+  maxNotifications = 1;
+  // @endif
+  if (feeds.length > maxNotifications) {
+    // We can detect only limit count of new feeds at time, but actually count of feeds may be more
+    const count = feeds.length === appGlobal.options.maxNumberOfFeeds ? chrome.i18n.getMessage("many") : feeds.length.toString();
 
-//     chrome.notifications.create({
-//       type: "basic",
-//       title: chrome.i18n.getMessage("NewFeeds"),
-//       message: chrome.i18n.getMessage("YouHaveNewFeeds", count),
-//       iconUrl: appGlobal.icons.defaultBig,
-//     });
-//   } else {
-//     let showBlogIcons = false;
-//     let showThumbnails = false;
+    chrome.notifications.create({
+      type: "basic",
+      title: chrome.i18n.getMessage("NewFeeds"),
+      message: chrome.i18n.getMessage("YouHaveNewFeeds", count),
+      iconUrl: appGlobal.icons.defaultBig,
+    });
+  } else {
+    let showBlogIcons = false;
+    let showThumbnails = false;
 
-//     // @if BROWSER!="firefox"
-//     chrome.permissions.contains({
-//       origins: ["<all_urls>"],
-//     }, (result) => {
-//       if (appGlobal.options.showBlogIconInNotifications && result) {
-//         showBlogIcons = true;
-//       }
+    // @if BROWSER!="firefox"
+    chrome.permissions.contains({
+      origins: ["<all_urls>"],
+    }, (result) => {
+      if (appGlobal.options.showBlogIconInNotifications && result) {
+        showBlogIcons = true;
+      }
 
-//       if (appGlobal.options.showThumbnailInNotifications && result) {
-//         showThumbnails = true;
-//       }
+      if (appGlobal.options.showThumbnailInNotifications && result) {
+        showThumbnails = true;
+      }
 
-//       createNotifications(feeds, showBlogIcons, showThumbnails);
-//     });
-//     // @endif
+      createNotifications(feeds, showBlogIcons, showThumbnails);
+    });
+    // @endif
 
-//     // @if BROWSER=="firefox"
-//     // Firefox doesn"t support optional permissions
-//     // https://bugzilla.mozilla.org/show_bug.cgi?id=1197420
-//     createNotifications(feeds, showBlogIcons, showThumbnails);
-//     // @endif
-//   }
-// }
+    // @if BROWSER=="firefox"
+    // Firefox doesn"t support optional permissions
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1197420
+    createNotifications(feeds, showBlogIcons, showThumbnails);
+    // @endif
+  }
+}
 
 /* Opens new tab, if tab is being opened when no active window (i.e. background mode)
  * then creates new window and adds tab in the end of it
@@ -565,33 +445,30 @@ function removeFeedFromCache(feedId: string) {
 /* Returns only new feeds and set date of last feed
  */
 function filterByNewFeeds(feeds: IFeedlyNotifierFeedEntry[]): Promise<IFeedlyNotifierFeedEntry[]> {
-  return new Promise<IFeedlyNotifierFeedEntry[]>((resolve, reject) => {
-    chrome.storage.local.get("lastFeedTimeTicks", (options) => {
-      let lastFeedTime;
+  return browser.storage.local.get("lastFeedTimeTicks").then((options) => {
+    let lastFeedTime;
 
-      if (options.lastFeedTimeTicks) {
-        lastFeedTime = new Date(options.lastFeedTimeTicks);
-      } else {
-        lastFeedTime = new Date(1971, 0, 1);
-      }
+    if (options.lastFeedTimeTicks) {
+      lastFeedTime = new Date(options.lastFeedTimeTicks);
+    } else {
+      lastFeedTime = new Date(1971, 0, 1);
+    }
 
-      const newFeeds: IFeedlyNotifierFeedEntry[] = [];
-      let maxFeedTime = lastFeedTime;
+    const newFeeds: IFeedlyNotifierFeedEntry[] = [];
+    let maxFeedTime = lastFeedTime;
 
-      /* tslint:disable prefer-for-of */
-      for (let i = 0; i < feeds.length; i++) {
-        if (feeds[i].date > lastFeedTime) {
-          newFeeds.push(feeds[i]);
-          if (feeds[i].date > maxFeedTime) {
-            maxFeedTime = feeds[i].date;
-          }
+    /* tslint:disable prefer-for-of */
+    for (let i = 0; i < feeds.length; i++) {
+      if (feeds[i].date > lastFeedTime) {
+        newFeeds.push(feeds[i]);
+        if (feeds[i].date > maxFeedTime) {
+          maxFeedTime = feeds[i].date;
         }
       }
-      /* tslint:enable prefer-for-of */
-      chrome.storage.local.set({ lastFeedTimeTicks: maxFeedTime.getTime() }, () => {
-        resolve(newFeeds);
-      });
-    });
+    }
+    /* tslint:enable prefer-for-of */
+    return browser.storage.local.set({ lastFeedTimeTicks: maxFeedTime.getTime() })
+      .then(() => newFeeds);
   });
 }
 
@@ -629,13 +506,15 @@ function login(): Promise<void> {
             redirect_uri: redirectUri,
             grant_type: "authorization_code",
           },
-        }).then((response) => {
+        }).then((response: IFeedlyAuthToken) => {
           appGlobal.syncStorage.set({
             accessToken: response.access_token,
             refreshToken: response.refresh_token,
             feedlyUserId: response.id,
+          }).then(() => {
+            chrome.tabs.onUpdated.removeListener(processCode);
+            console.log("access token saved");
           });
-          chrome.tabs.onUpdated.removeListener(processCode);
         });
       }
     });
@@ -649,13 +528,12 @@ function login(): Promise<void> {
 function logout(): Promise<void> {
   appGlobal.options.accessToken = "";
   appGlobal.options.refreshToken = "";
-  appGlobal.syncStorage.remove(["accessToken", "refreshToken"]);
-
-  return Promise.resolve();
+  return appGlobal.syncStorage.remove(["accessToken", "refreshToken"]);
 }
 
 /* Sets badge counter if unread feeds more than zero */
 function setBadgeCounter(unreadFeedsCount: number): Promise<void> {
+  console.log("setBadgeCounter()");
   if (appGlobal.options.showCounter) {
     chrome.browserAction.setBadgeText({ text: String(+unreadFeedsCount > 0 ? unreadFeedsCount : "") });
   } else {
@@ -672,25 +550,22 @@ function setBadgeCounter(unreadFeedsCount: number): Promise<void> {
 }
 
 function resetCounter(): Promise<void> {
+  console.log("resetCounter()");
   setBadgeCounter(0);
-  chrome.storage.local.set({ lastCounterResetTime: new Date().getTime() });
-
-  return Promise.resolve();
+  return browser.storage.local.set({ lastCounterResetTime: new Date().getTime() });
 }
 
 /* Writes all application options in chrome storage and runs callback after it */
-function writeOptions(callback: () => void): void {
+function writeOptions(): Promise<void> {
+  console.log("writeOptions()");
+
   const options: IFeedlyNotifierOptions = {};
 
   for (const option in appGlobal.options) {
     options[option] = appGlobal.options[option];
   }
 
-  appGlobal.syncStorage.set(options, () => {
-    if (typeof callback === "function") {
-      callback();
-    }
-  });
+  return appGlobal.syncStorage.set(options);
 }
 
 /* Plays alert sound */
@@ -720,12 +595,14 @@ function startSchedule(updateInterval: number) {
 
 /* Sets badge as active */
 function setActiveStatus() {
+  console.log("setActiveStatus()");
   chrome.browserAction.setBadgeBackgroundColor({ color: "#CF0016" });
   appGlobal.isLoggedIn = true;
 }
 
 /* Stops scheduler, sets badge as inactive and resets counter */
 function setInactiveStatus() {
+  console.log("setInactiveStatus()");
   chrome.browserAction.setIcon({ path: appGlobal.icons.inactive });
   chrome.browserAction.setBadgeText({ text: "" });
   appGlobal.cachedFeeds = [];
@@ -734,8 +611,10 @@ function setInactiveStatus() {
 }
 
 /* Reads all options from chrome storage and runs callback after it */
-function readOptions(callback: () => void) {
-  appGlobal.syncStorage.get(null, (options) => {
+function readOptions(): Promise<void> {
+  console.log("readOptions()");
+
+  return appGlobal.syncStorage.get().then((options) => {
     for (const optionName in options) {
       if (typeof appGlobal.options[optionName] === "boolean") {
         appGlobal.options[optionName] = Boolean(options[optionName]);
@@ -745,24 +624,21 @@ function readOptions(callback: () => void) {
         appGlobal.options[optionName] = options[optionName];
       }
     }
-
-    if (typeof callback === "function") {
-      callback();
-    }
   });
 }
 
+/* Retrieves authenticated user profile info
+  * @returns {Promise}
+*/
 function getUserInfo(): Promise<IFeedlyUserInfo> {
-  return apiRequestWrapper("profile", {
-    useSecureConnection: appGlobal.options.useSecureConnection,
-  }) as Promise<IFeedlyUserInfo>;
+  return apiRequestWrapper("profile", { useSecureConnection: appGlobal.options.useSecureConnection }) as Promise<IFeedlyUserInfo>;
 }
 
 function getOptions(): Promise<IFeedlyNotifierOptions> {
   const options: IFeedlyNotifierOptions = {};
 
   return new Promise((resolveOptions) => {
-    appGlobal.syncStorage.get(null, (items) => {
+    appGlobal.syncStorage.get().then((items) => {
       for (const option in items) {
         options[option] = items[option];
       }
@@ -803,7 +679,7 @@ function getOptions(): Promise<IFeedlyNotifierOptions> {
 
 function saveOptions(options: IFeedlyNotifierOptions): Promise<void> {
   return new Promise((resolveOptions) => {
-    appGlobal.syncStorage.set(options, () => {
+    appGlobal.syncStorage.set(options).then(() => {
       const promises = [];
       // @if BROWSER=="chrome"
       // request/remove background permission
@@ -839,7 +715,7 @@ function saveOptions(options: IFeedlyNotifierOptions): Promise<void> {
   });
 }
 
-function apiRequestWrapper(methodName: string, settings?: any) {
+function apiRequestWrapper(methodName: string, settings?: any): Promise<any> {
   if (!appGlobal.options.accessToken) {
     setInactiveStatus();
 
@@ -850,11 +726,11 @@ function apiRequestWrapper(methodName: string, settings?: any) {
   settings.useSecureConnection = appGlobal.options.useSecureConnection;
 
   return appGlobal.feedlyApiClient.request(methodName, settings)
-    .then((response) => {
+    .then((response: Promise<any>) => {
       setActiveStatus();
       return response;
     })
-    .catch((response) => {
+    .catch((response: Response) => {
       if (response && response.status === 401) {
         return refreshAccessToken();
       }
@@ -868,36 +744,48 @@ function apiRequestWrapper(methodName: string, settings?: any) {
  * Retrieves user categories
  * @returns {Promise}
  */
-function getUserCategories(): Promise<IFeedlyCategory[]> {
-  return apiRequestWrapper("categories")
-    .then((result: IFeedlyCategory[]) => result) // .concat({ id: appGlobal.globalUncategorized, label: "Uncategorized"})
-    .catch(() => []) as Promise<IFeedlyCategory[]>;
-}
+const getUserCategoryFilters = () => Promise.all([
+  apiRequestWrapper("categories") as Promise<IFeedlyCategory[]>,
+  appGlobal.syncStorage.get("filters"),
+])
+  .then((results) => {
+    const categories: IFeedlyCategory[] = results[0].concat({
+      id: appGlobal.globalUncategorized,
+      label: "Uncategorized",
+    });
+    const filters: string[] = results[1] && results[1].filters || [];
+    return categories.map<IFeedlyNotifierUserCategoryFilter>((category) => ({
+      id: category.id,
+      label: category.label,
+      checked: filters.indexOf(category.id) !== -1,
+    }));
+  })
+  .catch(() => [] as IFeedlyNotifierUserCategoryFilter[]);
 
-function getUserCategoryFilters(): Promise<IFeedlyCategoryFilter[]> {
-  return apiRequestWrapper("categories")
-    .then((categories: IFeedlyCategory[]) => {
-      return categories.concat({
-        id: appGlobal.globalUncategorized,
-        label: "Uncategorized",
-      });
-    })
-    .then((categories: IFeedlyCategory[]) => {
-      appGlobal.syncStorage.get("filters", (items) => {
-        const filters: string[] = items.filters || [];
+//  function getUserCategoryFilters(): Promise<IFeedlyCategoryFilter[]> {
+//   return apiRequestWrapper("categories")
+//     .then((categories: IFeedlyCategory[]) => {
+//       return categories.concat({
+//         id: appGlobal.globalUncategorized,
+//         label: "Uncategorized",
+//       });
+//     })
+//     .then((categories: IFeedlyCategory[]) => {
+//       appGlobal.syncStorage.get("filters").then((items) => {
+//         const filters: string[] = items.filters || [];
 
-        return categories.map<IFeedlyCategoryFilter>((category) => {
-          return {
-            id: category.id,
-            label: category.label,
-            checked: filters.indexOf(category.id) !== -1,
-          };
-        });
-      });
-      return categories;
-    })
-    .catch(() => []) as Promise<IFeedlyCategoryFilter[]>;
-}
+//         return categories.map<IFeedlyCategoryFilter>((category) => {
+//           return {
+//             id: category.id,
+//             label: category.label,
+//             checked: filters.indexOf(category.id) !== -1,
+//           };
+//         });
+//       });
+//       return categories;
+//     })
+//     .catch(() => []) as Promise<IFeedlyCategoryFilter[]>;
+// }
 
 /* Marks feed as read, remove it from the cache and decrement badge.
  * array of the ID of feeds
@@ -986,7 +874,7 @@ function getUserSubscriptions(updateCache?: boolean): Promise<IFeedlySubscriptio
         return Promise.reject("unauthorized");
       });
 
-  return appGlobal.getUserSubscriptionsPromise;
+  return appGlobal.getUserSubscriptionsPromise as Promise<IFeedlySubscription[]>;
 }
 
 function makeMarkersRequest(parameters?: any): Promise<void> {
@@ -1039,7 +927,7 @@ function makeMarkersRequest(parameters?: any): Promise<void> {
     }
 
     return unreadFeedsCount;
-  }).then((unreadCount) => setBadgeCounter(unreadCount))
+  }).then((unreadCount: number) => setBadgeCounter(unreadCount))
     .catch(() => {
       chrome.browserAction.setBadgeText({ text: "" });
       /* tslint:disable no-console */
@@ -1053,7 +941,7 @@ function makeMarkersRequest(parameters?: any): Promise<void> {
  * */
 function updateCounter() {
   if (appGlobal.options.resetCounterOnClick) {
-    chrome.storage.local.get("lastCounterResetTime", (options) => {
+    browser.storage.local.get("lastCounterResetTime").then((options) => {
       let parameters = null;
       if (options.lastCounterResetTime) {
         parameters = {
@@ -1063,7 +951,7 @@ function updateCounter() {
       makeMarkersRequest(parameters);
     });
   } else {
-    chrome.storage.local.set({ lastCounterResetTime: new Date(0).getTime() });
+    browser.storage.local.set({ lastCounterResetTime: new Date(0).getTime() });
     makeMarkersRequest();
   }
 }
@@ -1243,7 +1131,7 @@ function updateFeeds(silentUpdate?: boolean) {
     ) {
       filterByNewFeeds(appGlobal.cachedFeeds).then((newFeeds) => {
         if (appGlobal.options.showDesktopNotifications) {
-          // sendDesktopNotification(newFeeds);
+          sendDesktopNotification(newFeeds);
         }
         if (appGlobal.options.playSound && newFeeds.length > 0) {
           playSound();
@@ -1258,28 +1146,17 @@ function updateFeeds(silentUpdate?: boolean) {
     });
 }
 
-function getFeeds2(forceUpdate?: boolean): Promise<IFeedlyNotifierFeedEntry[]> {
+/* Returns feeds from the cache.
+ * If the cache is empty, then it will be updated before return
+ * forceUpdate, when is true, then cache will be updated
+ */
+function getFeeds(forceUpdate?: boolean): Promise<IFeedlyNotifierFeedEntry[]> {
   if (appGlobal.cachedFeeds.length > 0 && !forceUpdate) {
     return Promise.resolve(appGlobal.cachedFeeds.slice(0));
   } else {
     return updateFeeds(true)
       .then(() => updateCounter())
-      .then(() => Promise.resolve(appGlobal.cachedFeeds.slice(0)));
-  }
-}
-
-/* Returns feeds from the cache.
- * If the cache is empty, then it will be updated before return
- * forceUpdate, when is true, then cache will be updated
- */
-function getFeeds(forceUpdate: boolean, callback: (feeds: any[], isLoggedIn: boolean) => void) {
-  if (appGlobal.cachedFeeds.length > 0 && !forceUpdate) {
-    callback(appGlobal.cachedFeeds.slice(0), appGlobal.isLoggedIn);
-  } else {
-    updateFeeds(true).then(() => {
-      callback(appGlobal.cachedFeeds.slice(0), appGlobal.isLoggedIn);
-    });
-    updateCounter();
+      .then(() => appGlobal.cachedFeeds.slice(0));
   }
 }
 
@@ -1299,21 +1176,7 @@ function updateSavedFeeds(): Promise<void> {
  * If the cache is empty, then it will be updated before return
  * forceUpdate, when is true, then cache will be updated
  */
-function getSavedFeeds(forceUpdate: boolean, callback: (feeds: any[], isLoggedIn: boolean) => void) {
-  if (appGlobal.cachedSavedFeeds.length > 0 && !forceUpdate) {
-    callback(appGlobal.cachedSavedFeeds.slice(0), appGlobal.isLoggedIn);
-  } else {
-    updateSavedFeeds().then(() => {
-      callback(appGlobal.cachedSavedFeeds.slice(0), appGlobal.isLoggedIn);
-    });
-  }
-}
-
-/* Returns saved feeds from the cache.
- * If the cache is empty, then it will be updated before return
- * forceUpdate, when is true, then cache will be updated
- */
-function getSavedFeeds2(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]> {
+function getSavedFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]> {
   if (appGlobal.cachedSavedFeeds.length > 0 && !forceUpdate) {
     return Promise.resolve(appGlobal.cachedSavedFeeds.slice(0));
   } else {
@@ -1323,6 +1186,8 @@ function getSavedFeeds2(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[
 
 /* Initialization all parameters and run feeds check */
 function initialize() {
+  console.log("initialize()");
+
   if (appGlobal.options.openSiteOnIconClick) {
     chrome.browserAction.setPopup({ popup: "" });
   } else {
@@ -1357,7 +1222,7 @@ function refreshAccessToken() {
       accessToken: response.access_token,
       feedlyUserId: response.id,
     });
-  }, (response) => {
+  }, (response: Response) => {
     // If the refresh token is invalid
     if (response && response.status === 403) {
       setInactiveStatus();
@@ -1373,7 +1238,10 @@ class Background implements IFeedlyNotifierBackgroundPage {
   public get isLoggedIn() {
     return appGlobal.isLoggedIn;
   }
-  public feedTabId = appGlobal.feedTabId;
+
+  public get feedTabId() {
+    return appGlobal.feedTabId;
+  }
 
   public login = login;
   public logout = logout;
@@ -1389,8 +1257,8 @@ class Background implements IFeedlyNotifierBackgroundPage {
   public getUserInfo = getUserInfo;
   public getUserCategoryFilters = getUserCategoryFilters;
 
-  public getFeeds = getFeeds2;
-  public getSavedFeeds = getSavedFeeds2;
+  public getFeeds = getFeeds;
+  public getSavedFeeds = getSavedFeeds;
   public toggleSavedFeed = toggleSavedFeed;
 
   public markAsRead = markAsRead;

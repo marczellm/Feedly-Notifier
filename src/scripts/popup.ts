@@ -6,8 +6,11 @@ import "timeago.js/locales/locales";
 
 import {
   IFeedlyCategory,
+} from "./feedly.api.models";
+
+import {
   IFeedlyNotifierFeedEntry,
-} from "./background";
+} from "./models";
 
 const popupGlobal = {
   feeds: [] as IFeedlyNotifierFeedEntry[],

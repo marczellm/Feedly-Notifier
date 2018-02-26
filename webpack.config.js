@@ -19,6 +19,9 @@ module.exports = {
     path: path.join(__dirname, 'build'),
     filename: 'scripts/[name].js',
   },
+  resolve: {
+    extensions: ['.ts', '.js']
+  },
   module: {
     rules: [
       {
@@ -117,7 +120,7 @@ module.exports = {
       {
         from: path.resolve(__dirname, 'src'),
         to: path.resolve(__dirname, 'build'),
-        ignore: ['**/scripts/**/*', '*.html', 'manifest.json'],
+        ignore: ['**/scripts/**/*', '**/typings/**/*', '*.html', 'manifest.json'],
         verbose: true,
       },
     ]),

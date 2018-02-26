@@ -1,8 +1,11 @@
 import * as $ from "jquery";
 
 import {
-  IFeedlyNotifierOptions,
   IFeedlyUserInfo,
+} from "./feedly.api.models";
+
+import {
+  IFeedlyNotifierOptions,
 } from "./background";
 
 const optionsGlobal = {
@@ -103,13 +106,6 @@ const loadUserCategories = () => {
           $("#categories").find(`input[data-id='${element.id}']`).attr("checked", "checked");
         }
       });
-      // appendCategory(optionsGlobal.backgroundPage.appGlobal.globalUncategorized, "Uncategorized");
-      // optionsGlobal.backgroundPage.appGlobal.syncStorage.get("filters", (items) => {
-      //   const filters = items.filters || [];
-      //   filters.forEach((id) => {
-      //     $("#categories").find(`input[data-id='${id}']`).attr("checked", "checked");
-      //   });
-      // });
     });
 };
 
