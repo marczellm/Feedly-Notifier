@@ -1,6 +1,6 @@
 import {
   IFeedlyNotifierBackgroundPage
-} from '../scripts/background';
+} from '../src/scripts/background';
 
 /* tslint:disable interface-name */
 declare global {

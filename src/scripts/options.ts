@@ -13,7 +13,14 @@ const optionsGlobal = {
 };
 
 const loadProfileData = () => {
-  optionsGlobal.backgroundPage.getUserInfo().then((result) => {
+  optionsGlobal.backgroundPage.getUserInfo()
+  .then((result) => {
+
+    if (result === undefined) {
+      $("#userInfo, #filters-settings").hide();
+      return;
+    }
+
     const userInfo = $("#userInfo");
     userInfo.find("[data-locale-value]").each((index, element) => {
       const textBox = $(element);
@@ -26,24 +33,22 @@ const loadProfileData = () => {
       userInfo.find(`span[data-value-name='${profileData}']`).text(result[profileData]!);
     }
     /* tslint:enable forin */
-  }, () => {
-    $("#userInfo, #filters-settings").hide();
   });
 };
 
 const loadOptions = () => {
-  optionsGlobal.backgroundPage.getOptions().then((items) => {
-    const optionsForm = $("#options");
-    for (const option in items) {
-      const optionControl = optionsForm.find(`input[data-option-name='${option}']`);
-      if (optionControl.attr("type") === "checkbox") {
-        optionControl.attr("checked", items[option]);
-      } else {
-        optionControl.val(items[option]);
-      }
-    }
-    optionsForm.find("input").trigger("change");
-  });
+  // optionsGlobal.backgroundPage.getOptions().then((items) => {
+  //   const optionsForm = $("#options");
+  //   for (const option in items) {
+  //     const optionControl = optionsForm.find(`input[data-option-name='${option}']`);
+  //     if (optionControl.attr("type") === "checkbox") {
+  //       optionControl.attr("checked", items[option]);
+  //     } else {
+  //       optionControl.val(items[option]);
+  //     }
+  //   }
+  //   optionsForm.find("input").trigger("change");
+  // });
 
   $("#header").text(chrome.i18n.getMessage("FeedlyNotifierOptions"));
   $("#options").find("[data-locale-value]").each((index, element) => {
@@ -83,9 +88,9 @@ const saveOptions = () => {
   options.showBlogIconInNotifications = $("#showBlogIconInNotifications").is(":checked");
   options.showThumbnailInNotifications = $("#showThumbnailInNotifications").is(":checked");
 
-  optionsGlobal.backgroundPage.saveOptions(options).then(() => {
-    alert(chrome.i18n.getMessage("OptionsSaved"));
-  });
+  // optionsGlobal.backgroundPage.saveOptions(options).then(() => {
+  //   alert(chrome.i18n.getMessage("OptionsSaved"));
+  // });
 };
 
 const loadUserCategories = () => {
@@ -98,15 +103,15 @@ const loadUserCategories = () => {
     categories.append("<br/>");
   };
 
-  optionsGlobal.backgroundPage.getUserCategoryFilters()
-    .then((result) => {
-      result.forEach((element) => {
-        appendCategory(element.id, element.label);
-        if (element.checked) {
-          $("#categories").find(`input[data-id='${element.id}']`).attr("checked", "checked");
-        }
-      });
-    });
+  // optionsGlobal.backgroundPage.getUserCategoryFilters()
+  //   .then((result) => {
+  //     result.forEach((element) => {
+  //       appendCategory(element.id, element.label);
+  //       if (element.checked) {
+  //         $("#categories").find(`input[data-id='${element.id}']`).attr("checked", "checked");
+  //       }
+  //     });
+  //   });
 };
 
 $(document).ready(() => {

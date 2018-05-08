@@ -51,28 +51,28 @@ export interface IFeedlyNotifierOptions {
 }
 
 export interface IFeedlyNotifierBackgroundPage {
-  readonly options: IFeedlyNotifierOptions;
-  readonly isLoggedIn: boolean;
-  feedTabId?: number;
+  // readonly options: IFeedlyNotifierOptions;
+  // readonly isLoggedIn: boolean;
+  // feedTabId?: number;
 
-  login(): Promise<void>;
+  // login(): Promise<void>;
   logout(): Promise<void>;
 
-  getOptions(): Promise<IFeedlyNotifierOptions>;
-  saveOptions(options: IFeedlyNotifierOptions): Promise<void>;
+  // getOptions(): Promise<IFeedlyNotifierOptions>;
+  // saveOptions(options: IFeedlyNotifierOptions): Promise<void>;
 
-  getUserInfo(): Promise<IFeedlyUserInfo>;
-  getUserCategoryFilters(): Promise<IFeedlyNotifierUserCategoryFilter[]>;
+  getUserInfo(): Promise<IFeedlyUserInfo | undefined>;
+  // getUserCategoryFilters(): Promise<IFeedlyNotifierUserCategoryFilter[]>;
 
-  getFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
-  getSavedFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
+  // getFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
+  // getSavedFeeds(forceUpdate: boolean): Promise<IFeedlyNotifierFeedEntry[]>;
 
-  markAsRead(feedIds: string[]): Promise<void>;
-  toggleSavedFeed(feedIds: string[], saved: boolean): Promise<void>;
+  // markAsRead(feedIds: string[]): Promise<void>;
+  // toggleSavedFeed(feedIds: string[], saved: boolean): Promise<void>;
 
-  openFeedlyTab(): Promise<void>;
+  // openFeedlyTab(): Promise<void>;
 
-  resetCounter(): Promise<void>;
+  // resetCounter(): Promise<void>;
 }
 
 declare let BROWSER: Browser;
@@ -630,8 +630,14 @@ function readOptions(): Promise<void> {
 /* Retrieves authenticated user profile info
   * @returns {Promise}
 */
-function getUserInfo(): Promise<IFeedlyUserInfo> {
-  return apiRequestWrapper("profile", { useSecureConnection: appGlobal.options.useSecureConnection }) as Promise<IFeedlyUserInfo>;
+function getUserInfo(): Promise<IFeedlyUserInfo | undefined> {
+  console.log("background.getUserInfo()");
+  return apiRequestWrapper("profile", { useSecureConnection: appGlobal.options.useSecureConnection })
+    .then((userInfo: IFeedlyUserInfo) => userInfo)
+    .catch((reason) => {
+      console.log(reason);
+      return undefined;
+    });
 }
 
 function getOptions(): Promise<IFeedlyNotifierOptions> {
@@ -1151,6 +1157,7 @@ function updateFeeds(silentUpdate?: boolean) {
  * forceUpdate, when is true, then cache will be updated
  */
 function getFeeds(forceUpdate?: boolean): Promise<IFeedlyNotifierFeedEntry[]> {
+  console.log("background.getFeeds()");
   if (appGlobal.cachedFeeds.length > 0 && !forceUpdate) {
     return Promise.resolve(appGlobal.cachedFeeds.slice(0));
   } else {

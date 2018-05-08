@@ -1,30 +1,29 @@
 const WebpackDevServer = require('webpack-dev-server');
-const webpack = require('webpack');
-const config = require('../webpack.config');
-const env = require('./env');
-const path = require('path');
+const { argv } = require('yargs');
+//const webpack = require('webpack');
+//const config = require('../webpack.config');
+//const path = require('path');
 
-require('./prepare');
+// /* eslint-disable no-restricted-syntax */
+// for (const entryName in config.entry) {
+//   config.entry[entryName] =
+//     [
+//       `webpack-dev-server/client?http://localhost:${3000}`,
+//       'webpack/hot/dev-server',
+//     ].concat(config.entry[entryName]);
+// }
+// /* eslint-enable no-restricted-syntax */
 
-/* eslint-disable no-restricted-syntax */
-for (const entryName in config.entry) {
-  config.entry[entryName] =
-    [
-      `webpack-dev-server/client?http://localhost:${env.PORT}`,
-      'webpack/hot/dev-server',
-    ].concat(config.entry[entryName]);
-}
-/* eslint-enable no-restricted-syntax */
+// config.plugins = [new webpack.HotModuleReplacementPlugin()].concat(config.plugins || []);
 
-config.plugins = [new webpack.HotModuleReplacementPlugin()].concat(config.plugins || []);
+// const compiler = webpack(config);
 
-const compiler = webpack(config);
+// const server =
+//   new WebpackDevServer(compiler, {
+//     hot: true,
+//     contentBase: path.join(__dirname, '../build'),
+//     headers: { 'Access-Control-Allow-Origin': '*' },
 
-const server =
-  new WebpackDevServer(compiler, {
-    hot: true,
-    contentBase: path.join(__dirname, '../build'),
-    headers: { 'Access-Control-Allow-Origin': '*' },
-  });
+//   });
 
-server.listen(env.PORT);
+// server.listen(3000);
